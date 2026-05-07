@@ -2,8 +2,10 @@ import asyncio
 import uuid
 from typing import Optional
 
+from pathlib import Path
+
 from fastapi import FastAPI, File, Form, Header, Request, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 
@@ -11,6 +13,13 @@ from config import get_settings, GOOGLE_CLIENT_ID, ALLOWED_DOMAIN
 from services.extraction import run_extraction
 
 app = FastAPI(title="Bank Deposit Screenshot Extraction API", version="1.0.0")
+
+_UI_PATH = Path(__file__).parent / "static" / "index.html"
+
+
+@app.get("/", response_class=HTMLResponse)
+async def serve_ui():
+    return HTMLResponse(_UI_PATH.read_text())
 
 ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
 MAX_IMAGE_BYTES = 10 * 1024 * 1024  # 10MB

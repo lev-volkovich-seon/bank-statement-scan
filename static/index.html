@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bank Deposit Extraction</title>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0b0f1a;
+      --surface: #131929;
+      --surface2: #1a2235;
+      --border: rgba(255,255,255,0.08);
+      --accent: #4f7ef7;
+      --accent2: #a78bfa;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --success: #34d399;
+      --warn: #fbbf24;
+      --error: #f87171;
+      --radius: 12px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 32px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .logo { display: flex; align-items: center; gap: 10px; }
+    .logo svg { width: 28px; height: 28px; }
+    .logo span { font-size: 1rem; font-weight: 700; letter-spacing: -0.3px; }
+    .logo .tag {
+      font-size: 0.65rem; font-weight: 600; background: var(--accent);
+      color: #fff; padding: 2px 6px; border-radius: 4px; letter-spacing: 0.5px;
+    }
+
+    /* ── User chip ── */
+    .user-chip {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 999px; padding: 4px 12px 4px 4px; cursor: pointer;
+      transition: border-color .2s;
+    }
+    .user-chip:hover { border-color: var(--accent); }
+    .user-chip img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
+    .user-chip .initials {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: .75rem; font-weight: 700;
+    }
+    .user-chip .name { font-size: .8rem; }
+
+    /* ── Login screen ── */
+    #login-screen {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+    }
+    .login-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 48px 40px;
+      text-align: center; max-width: 380px; width: 90%;
+      box-shadow: 0 20px 60px rgba(0,0,0,.4);
+    }
+    .login-card h1 {
+      font-size: 1.5rem; font-weight: 700; margin-bottom: 8px;
+      background: linear-gradient(to right, var(--accent), var(--accent2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .login-card p { color: var(--muted); font-size: .9rem; margin-bottom: 32px; }
+    .login-card .domain-note {
+      margin-top: 16px; font-size: .75rem; color: var(--muted);
+    }
+    #login-error {
+      background: rgba(248,113,113,.1); border: 1px solid var(--error);
+      border-radius: 8px; padding: 10px 14px; color: var(--error);
+      font-size: .8rem; margin-bottom: 16px; display: none;
+    }
+
+    /* ── Main app ── */
+    #app-screen { flex: 1; display: none; }
+    .app-body {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 24px; max-width: 1100px; margin: 32px auto; padding: 0 24px;
+    }
+    @media (max-width: 768px) { .app-body { grid-template-columns: 1fr; } }
+
+    /* ── Panel ── */
+    .panel {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 24px;
+    }
+    .panel h2 { font-size: .85rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 20px; }
+
+    /* ── Provider toggle ── */
+    .provider-toggle {
+      display: flex; background: var(--surface2);
+      border-radius: 8px; padding: 3px; margin-bottom: 20px;
+    }
+    .provider-toggle button {
+      flex: 1; padding: 7px; border: none; border-radius: 6px; cursor: pointer;
+      font-size: .85rem; font-weight: 500; transition: all .2s;
+      background: transparent; color: var(--muted);
+    }
+    .provider-toggle button.active {
+      background: var(--accent); color: #fff; box-shadow: 0 2px 8px rgba(79,126,247,.4);
+    }
+
+    /* ── Drop zone ── */
+    .drop-zone {
+      border: 2px dashed var(--border); border-radius: 10px;
+      padding: 40px 20px; text-align: center; cursor: pointer;
+      transition: all .2s; position: relative; margin-bottom: 16px;
+    }
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: var(--accent); background: rgba(79,126,247,.05);
+    }
+    .drop-zone input[type=file] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .drop-zone .icon { font-size: 2rem; margin-bottom: 8px; }
+    .drop-zone p { color: var(--muted); font-size: .85rem; }
+    .drop-zone .file-name { color: var(--text); font-size: .85rem; font-weight: 500; margin-top: 6px; }
+
+    /* ── Preview ── */
+    #preview-wrap { display: none; margin-bottom: 16px; text-align: center; }
+    #preview-wrap img {
+      max-width: 100%; max-height: 260px; border-radius: 8px;
+      border: 1px solid var(--border); object-fit: contain;
+    }
+
+    /* ── Form fields ── */
+    .field-group { margin-bottom: 14px; }
+    .field-group label { display: block; font-size: .78rem; color: var(--muted); margin-bottom: 5px; }
+    .field-group input {
+      width: 100%; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 7px; padding: 8px 12px; color: var(--text); font-size: .85rem;
+      transition: border-color .2s; outline: none;
+    }
+    .field-group input:focus { border-color: var(--accent); }
+    .field-group input::placeholder { color: var(--muted); }
+
+    details { margin-bottom: 16px; }
+    summary {
+      font-size: .78rem; color: var(--muted); cursor: pointer; user-select: none;
+      list-style: none; display: flex; align-items: center; gap: 6px;
+    }
+    summary::before { content: '▸'; transition: transform .2s; }
+    details[open] summary::before { transform: rotate(90deg); }
+    details .inner { padding-top: 14px; }
+
+    /* ── Submit ── */
+    .btn-extract {
+      width: 100%; padding: 12px; background: var(--accent);
+      color: #fff; border: none; border-radius: 8px; font-size: .9rem;
+      font-weight: 600; cursor: pointer; transition: opacity .2s, transform .1s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-extract:hover { opacity: .9; }
+    .btn-extract:active { transform: scale(.98); }
+    .btn-extract:disabled { opacity: .5; cursor: not-allowed; }
+    .spinner {
+      width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.3);
+      border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite;
+      display: none;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Results ── */
+    #results-panel .empty-state {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; min-height: 300px; color: var(--muted); gap: 10px;
+    }
+    #results-panel .empty-state svg { opacity: .3; }
+
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px; border-radius: 999px; font-size: .75rem; font-weight: 600;
+      margin-bottom: 16px;
+    }
+    .status-badge.success { background: rgba(52,211,153,.15); color: var(--success); }
+    .status-badge.rejected { background: rgba(248,113,113,.15); color: var(--error); }
+
+    .review-flag {
+      display: flex; align-items: center; gap: 6px;
+      background: rgba(251,191,36,.1); border: 1px solid rgba(251,191,36,.3);
+      border-radius: 7px; padding: 8px 12px; font-size: .8rem; color: var(--warn);
+      margin-bottom: 16px;
+    }
+
+    .field-card {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 14px; margin-bottom: 10px;
+    }
+    .field-card .fc-header {
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;
+    }
+    .field-card .fc-name { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; }
+    .confidence-bar {
+      height: 3px; border-radius: 2px; background: var(--border); width: 80px;
+    }
+    .confidence-bar-fill {
+      height: 100%; border-radius: 2px; transition: width .4s;
+    }
+    .field-card .fc-value { font-size: .9rem; font-weight: 500; }
+    .field-card .fc-value.null { color: var(--muted); font-style: italic; font-weight: 400; }
+
+    .amounts-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+    @media (max-width: 480px) { .amounts-grid { grid-template-columns: 1fr; } }
+
+    .verify-block {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 14px; margin-bottom: 10px;
+    }
+    .verify-block .vb-title { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 10px; }
+    .check-row { display: flex; justify-content: space-between; font-size: .82rem; padding: 4px 0; }
+    .check-pass { color: var(--success); }
+    .check-fail { color: var(--error); }
+    .check-null { color: var(--muted); }
+    .overall-row { border-top: 1px solid var(--border); margin-top: 8px; padding-top: 8px; font-weight: 600; }
+
+    .warnings-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+    .warn-chip {
+      background: rgba(251,191,36,.1); border: 1px solid rgba(251,191,36,.25);
+      color: var(--warn); font-size: .72rem; padding: 3px 8px; border-radius: 999px;
+    }
+
+    .meta-row { display: flex; justify-content: space-between; font-size: .75rem; color: var(--muted); padding: 4px 0; }
+
+    .raw-toggle {
+      font-size: .75rem; color: var(--accent); cursor: pointer; margin-top: 12px;
+      background: none; border: none; text-decoration: underline;
+    }
+    #raw-json {
+      margin-top: 10px; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 14px; font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: .72rem; line-height: 1.6; overflow-x: auto; white-space: pre;
+      display: none; max-height: 400px; overflow-y: auto;
+      color: #a3c4f3;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <svg viewBox="0 0 32 32" fill="none">
+      <rect width="32" height="32" rx="8" fill="#4f7ef7"/>
+      <path d="M8 16l5 5 11-10" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span>Bank Deposit Extraction</span>
+    <span class="tag">DEMO</span>
+  </div>
+  <div id="user-area"></div>
+</header>
+
+<!-- Login -->
+<div id="login-screen">
+  <div class="login-card">
+    <h1>Deposit Extraction API</h1>
+    <p>Sign in with your SEON account to continue</p>
+    <div id="login-error"></div>
+    <div id="g_id_onload"
+      data-client_id="339298080830-o4su9baqe0i5m4s7mg6hu4ofnceklm0r.apps.googleusercontent.com"
+      data-callback="handleCredential"
+      data-auto_prompt="true">
+    </div>
+    <div class="g_id_signin"
+      data-type="standard"
+      data-theme="filled_black"
+      data-size="large"
+      data-width="300">
+    </div>
+    <p class="domain-note">Access restricted to @seon.io accounts</p>
+  </div>
+</div>
+
+<!-- App -->
+<div id="app-screen">
+  <div class="app-body">
+    <!-- Left: upload form -->
+    <div class="panel">
+      <h2>Extract Data</h2>
+
+      <div class="provider-toggle">
+        <button id="btn-claude" class="active" onclick="setProvider('claude')">Claude</button>
+        <button id="btn-gemini" onclick="setProvider('gemini')">Gemini</button>
+      </div>
+
+      <div class="drop-zone" id="drop-zone">
+        <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp" />
+        <div class="icon">📄</div>
+        <p>Drop a screenshot here or click to browse</p>
+        <p style="font-size:.72rem;margin-top:4px;color:var(--muted)">JPEG · PNG · WEBP · max 10 MB</p>
+        <p class="file-name" id="file-name"></p>
+      </div>
+
+      <div id="preview-wrap"><img id="preview-img" src="" alt="preview" /></div>
+
+      <details>
+        <summary>Verification parameters (optional)</summary>
+        <div class="inner">
+          <div class="field-group">
+            <label>Expected amount</label>
+            <input type="number" id="expected-amount" step="0.01" placeholder="e.g. 62.50" />
+          </div>
+          <div class="field-group">
+            <label>Expected recipient account</label>
+            <input type="text" id="expected-account" placeholder="e.g. 01202030024" />
+          </div>
+          <div class="field-group">
+            <label>Session reference</label>
+            <input type="text" id="session-ref" placeholder="e.g. PAN12358" />
+          </div>
+        </div>
+      </details>
+
+      <button class="btn-extract" id="extract-btn" onclick="runExtraction()" disabled>
+        <div class="spinner" id="spinner"></div>
+        <span id="btn-label">Select an image first</span>
+      </button>
+    </div>
+
+    <!-- Right: results -->
+    <div class="panel" id="results-panel">
+      <h2>Results</h2>
+      <div class="empty-state" id="empty-state">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="3" y="3" width="18" height="18" rx="3"/>
+          <path d="M3 9h18M9 21V9"/>
+        </svg>
+        <span>Results will appear here</span>
+      </div>
+      <div id="results-content" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const CLIENT_ID = '339298080830-o4su9baqe0i5m4s7mg6hu4ofnceklm0r.apps.googleusercontent.com';
+  let idToken = null;
+  let provider = 'claude';
+
+  // ── Auth ──────────────────────────────────────────────
+  function decodeJwt(token) {
+    const b64 = token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
+    return JSON.parse(atob(b64));
+  }
+
+  function handleCredential(resp) {
+    const user = decodeJwt(resp.credential);
+    if (!user.email.endsWith('@seon.io')) {
+      const err = document.getElementById('login-error');
+      err.textContent = 'Only @seon.io accounts are allowed.';
+      err.style.display = 'block';
+      return;
+    }
+    idToken = resp.credential;
+    localStorage.setItem('seon_id_token', idToken);
+    localStorage.setItem('seon_user', JSON.stringify({ name: user.name, email: user.email, picture: user.picture }));
+    showApp(user);
+  }
+
+  function showApp(user) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app-screen').style.display = 'block';
+    const area = document.getElementById('user-area');
+    area.innerHTML = `
+      <div class="user-chip" title="Sign out" onclick="signOut()">
+        ${user.picture
+          ? `<img src="${user.picture}" alt="${user.name}">`
+          : `<div class="initials">${user.email[0].toUpperCase()}</div>`}
+        <span class="name">${user.name || user.email}</span>
+      </div>`;
+  }
+
+  function signOut() {
+    idToken = null;
+    localStorage.removeItem('seon_id_token');
+    localStorage.removeItem('seon_user');
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('app-screen').style.display = 'none';
+    document.getElementById('user-area').innerHTML = '';
+    if (window.google) google.accounts.id.disableAutoSelect();
+  }
+
+  // Restore session from localStorage
+  window.addEventListener('DOMContentLoaded', () => {
+    const saved = localStorage.getItem('seon_id_token');
+    const user = localStorage.getItem('seon_user');
+    if (saved && user) {
+      idToken = saved;
+      showApp(JSON.parse(user));
+    }
+  });
+
+  // ── Provider ──────────────────────────────────────────
+  function setProvider(p) {
+    provider = p;
+    document.getElementById('btn-claude').classList.toggle('active', p === 'claude');
+    document.getElementById('btn-gemini').classList.toggle('active', p === 'gemini');
+  }
+
+  // ── File handling ─────────────────────────────────────
+  const fileInput = document.getElementById('file-input');
+  const dropZone  = document.getElementById('drop-zone');
+
+  fileInput.addEventListener('change', e => loadFile(e.target.files[0]));
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('dragover');
+    loadFile(e.dataTransfer.files[0]);
+  });
+
+  function loadFile(file) {
+    if (!file) return;
+    document.getElementById('file-name').textContent = file.name;
+    const btn = document.getElementById('extract-btn');
+    document.getElementById('btn-label').textContent = 'Extract';
+    btn.disabled = false;
+
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = document.getElementById('preview-img');
+      img.src = ev.target.result;
+      document.getElementById('preview-wrap').style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // ── Extraction ────────────────────────────────────────
+  async function runExtraction() {
+    const file = fileInput.files[0];
+    if (!file || !idToken) return;
+
+    const btn = document.getElementById('extract-btn');
+    const spinner = document.getElementById('spinner');
+    const label = document.getElementById('btn-label');
+    btn.disabled = true;
+    spinner.style.display = 'block';
+    label.textContent = 'Extracting…';
+
+    const form = new FormData();
+    form.append('image', file);
+    const amt = document.getElementById('expected-amount').value;
+    const acc = document.getElementById('expected-account').value;
+    const ref = document.getElementById('session-ref').value;
+    if (amt) form.append('expected_amount', amt);
+    if (acc) form.append('expected_recipient_account', acc);
+    if (ref) form.append('session_reference', ref);
+
+    try {
+      const res = await fetch(`/v1/extractions/bank-deposit?provider=${provider}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${idToken}` },
+        body: form,
+      });
+      const data = await res.json();
+      renderResults(data);
+    } catch (err) {
+      renderError(err.message);
+    } finally {
+      btn.disabled = false;
+      spinner.style.display = 'none';
+      label.textContent = 'Extract';
+    }
+  }
+
+  // ── Render ────────────────────────────────────────────
+  function conf(val) {
+    const pct = Math.round((val || 0) * 100);
+    const color = pct >= 90 ? '#34d399' : pct >= 75 ? '#fbbf24' : '#f87171';
+    return `<div class="confidence-bar"><div class="confidence-bar-fill" style="width:${pct}%;background:${color}"></div></div>`;
+  }
+
+  function fieldCard(label, value, confidence) {
+    const v = value == null ? 'null' : String(value);
+    const isNull = value == null;
+    return `
+      <div class="field-card">
+        <div class="fc-header">
+          <span class="fc-name">${label}</span>
+          ${confidence != null ? conf(confidence) : ''}
+        </div>
+        <div class="fc-value${isNull ? ' null' : ''}">${isNull ? 'not found' : v}</div>
+      </div>`;
+  }
+
+  function renderResults(data) {
+    document.getElementById('empty-state').style.display = 'none';
+    const el = document.getElementById('results-content');
+    el.style.display = 'block';
+
+    if (data.status === 'rejected') {
+      el.innerHTML = `
+        <span class="status-badge rejected">✗ Rejected</span>
+        ${fieldCard('Reason', data.reason, null)}
+        ${metaBlock(data)}
+        ${rawBlock(data)}`;
+      return;
+    }
+
+    const f = data.fields || {};
+    const doc = data.document || {};
+    const amounts = f.amounts || {};
+    const ta = amounts.transfer_amount || {};
+    const fees = amounts.fees || {};
+    const tc = amounts.total_charged || {};
+
+    el.innerHTML = `
+      <span class="status-badge success">✓ Extracted</span>
+      ${data.review_required ? `<div class="review-flag">⚠ Review required — low confidence or verification failure</div>` : ''}
+
+      <div class="amounts-grid">
+        ${fieldCard('Transfer amount', ta.value != null ? `${ta.symbol || ''}${ta.value} ${ta.currency_code || ''}`.trim() : null, ta.currency_confidence)}
+        ${fieldCard('Fees', fees.total_fees != null ? fees.total_fees : null, fees.confidence)}
+        ${fieldCard('Total charged', tc.value, tc.confidence)}
+      </div>
+
+      ${fieldCard('Bank name', f.bank_name?.value, f.bank_name?.confidence)}
+      ${fieldCard('Recipient account', f.recipient_account?.value, f.recipient_account?.confidence)}
+      ${fieldCard('Sender account', f.sender_account?.value, f.sender_account?.confidence)}
+      ${fieldCard('Date', f.date?.value, f.date?.confidence)}
+      ${fieldCard('Reference #', f.reference_number?.value, f.reference_number?.confidence)}
+      ${fieldCard('Payment description', f.payment_description?.value, f.payment_description?.confidence)}
+
+      ${verifyBlock(data.verification)}
+      ${(data.warnings?.length ? `<div class="warnings-list">${data.warnings.map(w => `<span class="warn-chip">${w}</span>`).join('')}</div>` : '')}
+      ${metaBlock(data)}
+      ${rawBlock(data)}`;
+  }
+
+  function verifyBlock(v) {
+    if (!v) return '';
+    const row = (label, val) => {
+      if (val === undefined) return '';
+      const cls = val === true ? 'check-pass' : val === false ? 'check-fail' : 'check-null';
+      const icon = val === true ? '✓' : val === false ? '✗' : '–';
+      return `<div class="check-row"><span>${label}</span><span class="${cls}">${icon}</span></div>`;
+    };
+    const overallCls = v.overall === 'pass' ? 'check-pass' : v.overall === 'fail' ? 'check-fail' : 'check-null';
+    return `<div class="verify-block">
+      <div class="vb-title">Verification</div>
+      ${row('Amount match', v.amount_match)}
+      ${row('Recipient account match', v.recipient_account_match)}
+      ${row('Session reference match', v.session_reference_match)}
+      <div class="check-row overall-row"><span>Overall</span><span class="${overallCls}">${v.overall}</span></div>
+    </div>`;
+  }
+
+  function metaBlock(data) {
+    const m = data.metadata || {};
+    return `<div style="margin-top:8px">
+      <div class="meta-row"><span>Extraction ID</span><span>${data.extraction_id || '—'}</span></div>
+      <div class="meta-row"><span>Prompt version</span><span>${m.prompt_version || '—'}</span></div>
+      <div class="meta-row"><span>Processing time</span><span>${m.processing_time_ms != null ? m.processing_time_ms + ' ms' : '—'}</span></div>
+    </div>`;
+  }
+
+  function rawBlock(data) {
+    return `<button class="raw-toggle" onclick="toggleRaw(this)">Show raw JSON</button>
+    <pre id="raw-json">${JSON.stringify(data, null, 2)}</pre>`;
+  }
+
+  function toggleRaw(btn) {
+    const pre = document.getElementById('raw-json');
+    const show = pre.style.display === 'none';
+    pre.style.display = show ? 'block' : 'none';
+    btn.textContent = show ? 'Hide raw JSON' : 'Show raw JSON';
+  }
+
+  function renderError(msg) {
+    document.getElementById('empty-state').style.display = 'none';
+    const el = document.getElementById('results-content');
+    el.style.display = 'block';
+    el.innerHTML = `<div style="color:var(--error);font-size:.85rem;padding:16px;background:rgba(248,113,113,.1);border-radius:8px">Error: ${msg}</div>`;
+  }
+</script>
+</body>
+</html>
