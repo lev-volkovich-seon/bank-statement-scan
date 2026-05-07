@@ -46,7 +46,7 @@ function getModel(provider: string) {
     case "gemini":
       return createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_API_KEY })("gemini-2.5-flash");
     case "mistral":
-      return gateway("mistral/pixtral-large-2409");
+      return gateway("mistral/pixtral-large-latest");
     default:
       return createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY })("claude-sonnet-4-6");
   }
