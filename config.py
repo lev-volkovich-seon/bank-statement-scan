@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     prompt_version: str = "1.0.0"
     timeout_seconds: int = 15
     claude_model: str = "claude-sonnet-4-6"
-    gemini_model: str = "gemini-2.0-flash"
+    gemini_model: str = "gemini-2.5-flash-preview-04-17"
 
     class Config:
         env_file = ".env"
