@@ -57,8 +57,8 @@ async def health():
 
     try:
         _genai.configure(api_key=settings.google_api_key)
-        list(_genai.list_models())
-        results["gemini"] = "ok"
+        models = [m.name for m in _genai.list_models() if "generateContent" in m.supported_generation_methods]
+        results["gemini"] = models
     except Exception as e:
         results["gemini"] = str(e)[:120]
 
