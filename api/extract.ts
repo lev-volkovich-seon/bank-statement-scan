@@ -264,9 +264,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const results: Record<string, unknown> = {};
       for (let i = 0; i < PROVIDERS.length; i++) {
         const s = settled[i];
-        results[PROVIDERS[i]] = s.status === "fulfilled"
-          ? s.value
-          : { status: "error", error: s.reason instanceof Error ? s.reason.message : String(s.reason) };
+        if (s.status === "fulfilled") {
+          results[PROVIDERS[i]] = s.value;
+        } else {
+          const e = s.reason;
+          results[PROVIDERS[i]] = {
+            status: "error",
+            error: e instanceof Error ? e.message : String(e),
+            error_detail: e instanceof Error ? {
+              name: e.name,
+              statusCode: (e as any).statusCode,
+              url: (e as any).url,
+              responseBody: (e as any).responseBody,
+            } : undefined,
+          };
+        }
       }
 
       return res.json({
@@ -287,6 +299,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.json({ extraction_id: extractionId, ...result });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
-    return rfc7807(res, 500, "Internal Server Error", msg, instance);
+    const detail = err instanceof Error ? {
+      name: (err as any).name,
+      statusCode: (err as any).statusCode,
+      url: (err as any).url,
+      responseBody: (err as any).responseBody,
+    } : undefined;
+    return res.status(500).json({
+      type: `https://api.seon.com/errors/internal-server-error`,
+      title: "Internal Server Error",
+      status: 500,
+      detail: msg,
+      error_detail: detail,
+      instance,
+    });
   }
 }
