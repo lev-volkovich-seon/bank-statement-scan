@@ -1,7 +1,7 @@
 import { generateText } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { vercel } from "@ai-sdk/vercel";
+import { createVercel } from "@ai-sdk/vercel";
 import { OAuth2Client } from "google-auth-library";
 import formidable from "formidable";
 import fs from "fs";
@@ -47,7 +47,7 @@ function getModel(provider: string) {
     case "gemini":
       return createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_API_KEY })("gemini-2.5-flash");
     case "vercel":
-      return vercel("v0-1.0-md");
+      return createVercel({ apiKey: process.env.V0_API_KEY })("v0-1.0-md");
     default:
       return createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY })("claude-sonnet-4-6");
   }
