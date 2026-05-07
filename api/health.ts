@@ -7,6 +7,6 @@ export default function handler(_req: VercelRequest, res: VercelResponse) {
   return res.json({
     claude: check(process.env.ANTHROPIC_API_KEY),
     gemini: check(process.env.GOOGLE_API_KEY),
-    mistral: check(process.env.MISTRAL_API_KEY),
+    mistral: check(process.env.AI_GATEWAY_API_KEY),
   });
 }
