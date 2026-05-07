@@ -1,7 +1,7 @@
 import { generateText } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { createVercel } from "@ai-sdk/vercel";
+import { createMistral } from "@ai-sdk/mistral";
 import { OAuth2Client } from "google-auth-library";
 import formidable from "formidable";
 import fs from "fs";
@@ -15,7 +15,7 @@ const GOOGLE_CLIENT_ID =
   "339298080830-o4su9baqe0i5m4s7mg6hu4ofnceklm0r.apps.googleusercontent.com";
 const ALLOWED_DOMAIN = "@seon.io";
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
-const PROVIDERS = ["claude", "gemini", "vercel"];
+const PROVIDERS = ["claude", "gemini", "mistral"];
 
 const SYSTEM_PROMPT = fs.readFileSync(
   path.join(process.cwd(), "prompts/v1_0_0.txt"),
@@ -46,8 +46,8 @@ function getModel(provider: string) {
   switch (provider) {
     case "gemini":
       return createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_API_KEY })("gemini-2.5-flash");
-    case "vercel":
-      return createVercel({ apiKey: process.env.V0_API_KEY })("v0-1.0-md");
+    case "mistral":
+      return createMistral({ apiKey: process.env.MISTRAL_API_KEY })("pixtral-large-latest");
     default:
       return createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY })("claude-sonnet-4-6");
   }
@@ -238,7 +238,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // ── Provider ──
   const provider = ((req.query.provider as string) || "claude").toLowerCase();
   if (provider !== "all" && !PROVIDERS.includes(provider))
-    return rfc7807(res, 400, "Invalid Request", `Unknown provider '${provider}'.`, instance);
+    return rfc7807(res, 400, "Invalid Request", `Unknown provider '${provider}'. Use: claude, gemini, mistral, all`, instance);
 
   // ── Shared verification params ──
   const expectedAmount = formFields.expected_amount

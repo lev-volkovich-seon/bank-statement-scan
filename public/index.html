@@ -210,7 +210,7 @@
     }
     .provider-col-header .provider-name.claude { color: #c084fc; }
     .provider-col-header .provider-name.gemini { color: #4ade80; }
-    .provider-col-header .provider-name.vercel { color: #60a5fa; }
+    .provider-col-header .provider-name.mistral { color: #60a5fa; }
     .provider-col-header .timing {
       font-size: .72rem; color: var(--muted); font-variant-numeric: tabular-nums;
     }
@@ -227,7 +227,7 @@
     .timing-fill { height: 100%; border-radius: 3px; transition: width .6s ease; }
     .timing-fill.claude { background: #c084fc; }
     .timing-fill.gemini { background: #4ade80; }
-    .timing-fill.vercel { background: #60a5fa; }
+    .timing-fill.mistral { background: #60a5fa; }
     .timing-ms { font-size: .75rem; color: var(--text); margin-top: 3px; font-variant-numeric: tabular-nums; }
 
     .status-badge {
@@ -343,7 +343,7 @@
       <div class="provider-toggle">
         <button id="btn-claude" class="active" onclick="setProvider('claude')">Claude</button>
         <button id="btn-gemini" onclick="setProvider('gemini')">Gemini</button>
-        <button id="btn-vercel" onclick="setProvider('vercel')">Vercel AI</button>
+        <button id="btn-mistral" onclick="setProvider('mistral')">Mistral</button>
         <button id="btn-all" class="all-btn" onclick="setProvider('all')">All ⚡</button>
       </div>
 
@@ -455,7 +455,7 @@
   // ── Provider ──────────────────────────────────────────
   function setProvider(p) {
     provider = p;
-    ['claude','gemini','vercel','all'].forEach(id => {
+    ['claude','gemini','mistral','all'].forEach(id => {
       document.getElementById('btn-' + id).classList.toggle('active', id === p);
     });
     const btn = document.getElementById('extract-btn');
@@ -659,8 +659,8 @@
     el.style.display = 'block';
 
     const results = data.results || {};
-    const providers = ['claude', 'gemini', 'vercel'];
-    const labels = { claude: 'Claude', gemini: 'Gemini', vercel: 'Vercel AI' };
+    const providers = ['claude', 'gemini', 'mistral'];
+    const labels = { claude: 'Claude', gemini: 'Gemini', mistral: 'Mistral' };
 
     // timing comparison
     const times = providers.map(p => (results[p]?.metadata?.processing_time_ms) || 0);
