@@ -200,12 +200,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         {
           role: "user",
           content: [
-            { type: "image", image: imageBytes, mimeType: mimeType as "image/jpeg" | "image/png" | "image/webp" },
+            { type: "image", image: imageBytes },
             { type: "text", text: "Extract the data from this bank deposit screenshot." },
           ],
         },
       ],
-      maxTokens: 4096,
+      maxOutputTokens: 4096,
     });
 
     const processingTimeMs = Date.now() - startMs;
