@@ -1,16 +1,12 @@
 {
   "builds": [
-    { "src": "api/extract.ts", "use": "@vercel/node" },
-    { "src": "api/health.ts", "use": "@vercel/node" },
+    { "src": "api/extract.ts", "use": "@vercel/node", "config": { "maxDuration": 30 } },
+    { "src": "api/health.ts", "use": "@vercel/node", "config": { "maxDuration": 10 } },
     { "src": "public/**", "use": "@vercel/static" }
   ],
   "routes": [
     { "src": "/api/extract", "dest": "/api/extract.ts" },
     { "src": "/api/health", "dest": "/api/health.ts" },
     { "src": "/(.*)", "dest": "/public/$1" }
-  ],
-  "functions": {
-    "api/extract.ts": { "maxDuration": 30 },
-    "api/health.ts": { "maxDuration": 10 }
-  }
+  ]
 }
