@@ -66,8 +66,8 @@ async def extract_bank_deposit(
         email = id_info.get("email", "")
         if not email.endswith(ALLOWED_DOMAIN):
             return _rfc7807(403, "Forbidden", f"Access restricted to {ALLOWED_DOMAIN} accounts.", instance)
-    except Exception:
-        return _rfc7807(401, "Unauthorized", "Invalid or expired Google ID token.", instance)
+    except Exception as auth_exc:
+        return _rfc7807(401, "Unauthorized", f"Invalid or expired Google ID token: {auth_exc}", instance)
 
     # Validate image
     content_type = image.content_type or ""
