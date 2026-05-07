@@ -299,7 +299,7 @@
       <div class="provider-toggle">
         <button id="btn-claude" class="active" onclick="setProvider('claude')">Claude</button>
         <button id="btn-gemini" onclick="setProvider('gemini')">Gemini</button>
-        <button id="btn-mistral" onclick="setProvider('mistral')">Mistral</button>
+        <button id="btn-vercel" onclick="setProvider('vercel')">Vercel AI</button>
       </div>
 
       <div class="drop-zone" id="drop-zone">
@@ -414,7 +414,7 @@
     provider = p;
     document.getElementById('btn-claude').classList.toggle('active', p === 'claude');
     document.getElementById('btn-gemini').classList.toggle('active', p === 'gemini');
-    document.getElementById('btn-mistral').classList.toggle('active', p === 'mistral');
+    document.getElementById('btn-vercel').classList.toggle('active', p === 'vercel');
   }
 
   // ── File handling ─────────────────────────────────────
