@@ -40,6 +40,31 @@ def _rfc7807(status: int, title: str, detail: str, instance: str) -> JSONRespons
     )
 
 
+@app.get("/health")
+async def health():
+    import anthropic as _anthropic
+    import google.generativeai as _genai
+
+    settings = get_settings()
+    results = {}
+
+    try:
+        client = _anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        client.models.list()
+        results["claude"] = "ok"
+    except Exception as e:
+        results["claude"] = str(e)[:120]
+
+    try:
+        _genai.configure(api_key=settings.google_api_key)
+        list(_genai.list_models())
+        results["gemini"] = "ok"
+    except Exception as e:
+        results["gemini"] = str(e)[:120]
+
+    return results
+
+
 @app.post("/v1/extractions/bank-deposit")
 async def extract_bank_deposit(
     request: Request,
