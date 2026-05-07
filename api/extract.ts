@@ -15,6 +15,7 @@ const GOOGLE_CLIENT_ID =
   "339298080830-o4su9baqe0i5m4s7mg6hu4ofnceklm0r.apps.googleusercontent.com";
 const ALLOWED_DOMAIN = "@seon.io";
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
+const PROVIDERS = ["claude", "gemini", "vercel"];
 
 const SYSTEM_PROMPT = fs.readFileSync(
   path.join(process.cwd(), "prompts/v1_0_0.txt"),
@@ -60,7 +61,7 @@ function parseJson(text: string): Record<string, unknown> {
   return JSON.parse(cleaned);
 }
 
-// ── Verification (port of services/verification.py) ───────────────────────
+// ── Verification ──────────────────────────────────────────────────────────────
 
 function runVerification(
   fields: Record<string, unknown>,
@@ -139,6 +140,55 @@ function computeReviewRequired(
   return false;
 }
 
+// ── Single-provider extraction ────────────────────────────────────────────────
+
+async function extractSingle(
+  provider: string,
+  imageBytes: Buffer,
+  expectedAmount: number | undefined,
+  expectedAccount: string | undefined,
+  sessionRef: string | undefined
+): Promise<Record<string, unknown>> {
+  const startMs = Date.now();
+
+  const { text } = await generateText({
+    model: getModel(provider),
+    system: SYSTEM_PROMPT,
+    messages: [
+      {
+        role: "user",
+        content: [
+          { type: "image", image: imageBytes },
+          { type: "text", text: "Extract the data from this bank deposit screenshot." },
+        ],
+      },
+    ],
+    maxOutputTokens: 4096,
+  });
+
+  const processingTimeMs = Date.now() - startMs;
+  const modelResponse = parseJson(text);
+  const status = (modelResponse.status as string) || "success";
+  const metadata = { prompt_version: "1.0.0", processing_time_ms: processingTimeMs };
+
+  if (status === "rejected") {
+    return {
+      status: "rejected",
+      metadata,
+      reason: modelResponse.reason || "not_a_bank_document",
+      review_required: true,
+    };
+  }
+
+  const fields = (modelResponse.fields as Record<string, unknown>) || {};
+  const document = (modelResponse.document as Record<string, unknown>) || {};
+  const warnings = (modelResponse.warnings as string[]) || [];
+  const verification = runVerification(fields, expectedAmount, expectedAccount, sessionRef);
+  const reviewRequired = computeReviewRequired(document, fields, warnings, verification, status);
+
+  return { status, metadata, document, fields, verification, warnings, review_required: reviewRequired };
+}
+
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -187,70 +237,54 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // ── Provider ──
   const provider = ((req.query.provider as string) || "claude").toLowerCase();
-  if (!["claude", "gemini", "vercel"].includes(provider))
+  if (provider !== "all" && !PROVIDERS.includes(provider))
     return rfc7807(res, 400, "Invalid Request", `Unknown provider '${provider}'.`, instance);
 
-  // ── Extract ──
-  const startMs = Date.now();
-  try {
-    const { text } = await generateText({
-      model: getModel(provider),
-      system: SYSTEM_PROMPT,
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "image", image: imageBytes },
-            { type: "text", text: "Extract the data from this bank deposit screenshot." },
-          ],
-        },
-      ],
-      maxOutputTokens: 4096,
-    });
+  // ── Shared verification params ──
+  const expectedAmount = formFields.expected_amount
+    ? parseFloat(String(Array.isArray(formFields.expected_amount) ? formFields.expected_amount[0] : formFields.expected_amount))
+    : undefined;
+  const expectedAccount = formFields.expected_recipient_account
+    ? String(Array.isArray(formFields.expected_recipient_account) ? formFields.expected_recipient_account[0] : formFields.expected_recipient_account)
+    : undefined;
+  const sessionRef = formFields.session_reference
+    ? String(Array.isArray(formFields.session_reference) ? formFields.session_reference[0] : formFields.session_reference)
+    : undefined;
 
-    const processingTimeMs = Date.now() - startMs;
-    const modelResponse = parseJson(text);
-    const status = (modelResponse.status as string) || "success";
-    const metadata = { prompt_version: "1.0.0", processing_time_ms: processingTimeMs };
-    const extractionId = uuidv4();
+  const extractionId = uuidv4();
+  const wallStart = Date.now();
 
-    if (status === "rejected") {
+  // ── All providers in parallel ──
+  if (provider === "all") {
+    try {
+      const settled = await Promise.allSettled(
+        PROVIDERS.map(p => extractSingle(p, imageBytes, expectedAmount, expectedAccount, sessionRef))
+      );
+
+      const results: Record<string, unknown> = {};
+      for (let i = 0; i < PROVIDERS.length; i++) {
+        const s = settled[i];
+        results[PROVIDERS[i]] = s.status === "fulfilled"
+          ? s.value
+          : { status: "error", error: s.reason instanceof Error ? s.reason.message : String(s.reason) };
+      }
+
       return res.json({
         extraction_id: extractionId,
-        status: "rejected",
-        metadata,
-        reason: modelResponse.reason || "not_a_bank_document",
-        review_required: true,
+        status: "all",
+        metadata: { prompt_version: "1.0.0", processing_time_ms: Date.now() - wallStart },
+        results,
       });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return rfc7807(res, 500, "Internal Server Error", msg, instance);
     }
+  }
 
-    const fields = (modelResponse.fields as Record<string, unknown>) || {};
-    const document = (modelResponse.document as Record<string, unknown>) || {};
-    const warnings = (modelResponse.warnings as string[]) || [];
-
-    const expectedAmount = formFields.expected_amount
-      ? parseFloat(String(Array.isArray(formFields.expected_amount) ? formFields.expected_amount[0] : formFields.expected_amount))
-      : undefined;
-    const expectedAccount = formFields.expected_recipient_account
-      ? String(Array.isArray(formFields.expected_recipient_account) ? formFields.expected_recipient_account[0] : formFields.expected_recipient_account)
-      : undefined;
-    const sessionRef = formFields.session_reference
-      ? String(Array.isArray(formFields.session_reference) ? formFields.session_reference[0] : formFields.session_reference)
-      : undefined;
-
-    const verification = runVerification(fields, expectedAmount, expectedAccount, sessionRef);
-    const reviewRequired = computeReviewRequired(document, fields, warnings, verification, status);
-
-    return res.json({
-      extraction_id: extractionId,
-      status,
-      metadata,
-      document,
-      fields,
-      verification,
-      warnings,
-      review_required: reviewRequired,
-    });
+  // ── Single provider ──
+  try {
+    const result = await extractSingle(provider, imageBytes, expectedAmount, expectedAccount, sessionRef);
+    return res.json({ extraction_id: extractionId, ...result });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     return rfc7807(res, 500, "Internal Server Error", msg, instance);
