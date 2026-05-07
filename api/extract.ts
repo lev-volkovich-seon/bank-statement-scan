@@ -47,7 +47,7 @@ function getModel(provider: string) {
     case "gemini":
       return createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_API_KEY })("gemini-2.5-flash");
     case "vercel":
-      return vercel("v0-1.5-md");
+      return vercel("v0-1.0-md");
     default:
       return createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY })("claude-sonnet-4-6");
   }
