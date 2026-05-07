@@ -2,10 +2,12 @@ import asyncio
 import uuid
 from typing import Optional
 
-from fastapi import FastAPI, File, Form, Header, HTTPException, Request, UploadFile
+from fastapi import FastAPI, File, Form, Header, Request, UploadFile
 from fastapi.responses import JSONResponse
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
 
-from config import get_settings
+from config import get_settings, GOOGLE_CLIENT_ID, ALLOWED_DOMAIN
 from services.extraction import run_extraction
 
 app = FastAPI(title="Bank Deposit Screenshot Extraction API", version="1.0.0")
@@ -42,12 +44,21 @@ async def extract_bank_deposit(
     settings = get_settings()
     instance = f"/v1/extractions/bank-deposit/req_{uuid.uuid4().hex[:8]}"
 
-    # Auth
+    # Google SSO auth — validate ID token, restrict to @seon.io
     if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
-    token = authorization.removeprefix("Bearer ").strip()
-    if token != settings.api_bearer_token:
-        raise HTTPException(status_code=401, detail="Invalid bearer token")
+        return _rfc7807(401, "Unauthorized", "Missing or invalid Authorization header.", instance)
+    google_id_token = authorization.removeprefix("Bearer ").strip()
+    try:
+        id_info = id_token.verify_oauth2_token(
+            google_id_token,
+            google_requests.Request(),
+            GOOGLE_CLIENT_ID,
+        )
+        email = id_info.get("email", "")
+        if not email.endswith(ALLOWED_DOMAIN):
+            return _rfc7807(403, "Forbidden", f"Access restricted to {ALLOWED_DOMAIN} accounts.", instance)
+    except Exception:
+        return _rfc7807(401, "Unauthorized", "Invalid or expired Google ID token.", instance)
 
     # Validate image
     content_type = image.content_type or ""

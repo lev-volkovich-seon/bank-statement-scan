@@ -3,3 +3,4 @@ python-multipart==0.0.20
 anthropic==0.52.0
 google-generativeai==0.8.5
 pydantic-settings==2.9.1
+google-auth==2.40.1
