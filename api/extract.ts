@@ -1,7 +1,7 @@
 import { generateText } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { createMistral } from "@ai-sdk/mistral";
+import { createVercel } from "@ai-sdk/vercel";
 import { OAuth2Client } from "google-auth-library";
 import formidable from "formidable";
 import fs from "fs";
@@ -47,7 +47,7 @@ function getModel(provider: string) {
     case "gemini":
       return createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_API_KEY })("gemini-2.5-flash");
     case "mistral":
-      return createMistral({ apiKey: process.env.MISTRAL_API_KEY })("pixtral-large-latest");
+      return createVercel({ apiKey: process.env.V0_API_KEY })("mistral/pixtral-large-2409");
     default:
       return createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY })("claude-sonnet-4-6");
   }
