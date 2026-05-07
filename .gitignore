@@ -7,4 +7,5 @@ venv/
 .vercel/
 *.egg-info/
 dist/
+node_modules/
 .vercel

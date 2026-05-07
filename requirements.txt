@@ -1,8 +1,0 @@
-fastapi==0.115.12
-python-multipart==0.0.20
-anthropic==0.52.0
-google-generativeai==0.8.5
-pydantic-settings==2.9.1
-google-auth==2.40.1
-requests==2.32.3
-cachecontrol==0.14.2
