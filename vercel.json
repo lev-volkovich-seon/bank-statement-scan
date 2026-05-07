@@ -2,11 +2,13 @@
   "builds": [
     { "src": "api/extract.ts", "use": "@vercel/node", "config": { "maxDuration": 30 } },
     { "src": "api/health.ts", "use": "@vercel/node", "config": { "maxDuration": 10 } },
+    { "src": "api/ping-mistral.ts", "use": "@vercel/node", "config": { "maxDuration": 30 } },
     { "src": "public/**", "use": "@vercel/static" }
   ],
   "routes": [
     { "src": "/api/extract", "dest": "/api/extract.ts" },
     { "src": "/api/health", "dest": "/api/health.ts" },
+    { "src": "/api/ping-mistral", "dest": "/api/ping-mistral.ts" },
     { "src": "/(.*)", "dest": "/public/$1" }
   ]
 }
