@@ -1,7 +1,7 @@
 import { generateText, gateway } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { Ollama } from "ollama";
+import { createOpenAI } from "@ai-sdk/openai";
 import { OAuth2Client } from "google-auth-library";
 import formidable from "formidable";
 import fs from "fs";
@@ -49,7 +49,10 @@ function getModel(provider: string) {
     case "mistral":
       return gateway("mistral/pixtral-large-latest");
     case "llama":
-      return null as any; // handled via Ollama Cloud native client
+      return createOpenAI({
+        apiKey: process.env.LLAMA_API_KEY,
+        baseURL: "https://api.scaleway.ai/v1",
+      })("llama-3.2-11b-vision-instruct");
     default:
       return createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY })("claude-sonnet-4-6");
   }
@@ -142,24 +145,6 @@ function computeReviewRequired(
   return false;
 }
 
-// ── Ollama Cloud native call ──────────────────────────────────────────────────
-
-async function ollamaCloudGenerate(imageBytes: Buffer): Promise<string> {
-  const ollama = new Ollama({
-    host: "https://ollama.com",
-    headers: { Authorization: `Bearer ${process.env.OLLAMA_API_KEY}` },
-  });
-  const response = await ollama.chat({
-    model: "llama3.2-vision",
-    stream: false,
-    messages: [
-      { role: "system", content: SYSTEM_PROMPT },
-      { role: "user", content: "Extract the data from this bank deposit screenshot.", images: [imageBytes.toString("base64")] },
-    ],
-  });
-  return response.message.content;
-}
-
 // ── Single-provider extraction ────────────────────────────────────────────────
 
 async function extractSingle(
@@ -171,22 +156,20 @@ async function extractSingle(
 ): Promise<Record<string, unknown>> {
   const startMs = Date.now();
 
-  const text = provider === "llama"
-    ? await ollamaCloudGenerate(imageBytes)
-    : await generateText({
-        model: getModel(provider),
-        system: SYSTEM_PROMPT,
-        messages: [
-          {
-            role: "user",
-            content: [
-              { type: "image", image: imageBytes },
-              { type: "text", text: "Extract the data from this bank deposit screenshot." },
-            ],
-          },
+  const text = await generateText({
+    model: getModel(provider),
+    system: SYSTEM_PROMPT,
+    messages: [
+      {
+        role: "user",
+        content: [
+          { type: "image", image: imageBytes },
+          { type: "text", text: "Extract the data from this bank deposit screenshot." },
         ],
-        maxOutputTokens: 4096,
-      }).then((r) => r.text);
+      },
+    ],
+    maxOutputTokens: 4096,
+  }).then((r) => r.text);
 
   const processingTimeMs = Date.now() - startMs;
   const modelResponse = parseJson(text);

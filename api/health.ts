@@ -8,6 +8,6 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
     claude: check(process.env.ANTHROPIC_API_KEY),
     gemini: check(process.env.GOOGLE_API_KEY),
     mistral: check(process.env.AI_GATEWAY_API_KEY),
-    llama: check(process.env.OLLAMA_API_KEY),
+    llama: check(process.env.LLAMA_API_KEY),
   });
 }
