@@ -52,7 +52,7 @@ function getModel(provider: string) {
       return createOpenAI({
         apiKey: process.env.LLAMA_API_KEY,
         baseURL: "https://api.scaleway.ai/v1",
-      })("llama-3.2-11b-vision-instruct");
+      }).chat("llama-3.2-11b-vision-instruct");
     default:
       return createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY })("claude-sonnet-4-6");
   }
