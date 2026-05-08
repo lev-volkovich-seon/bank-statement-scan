@@ -150,7 +150,7 @@ async function ollamaCloudGenerate(imageBytes: Buffer): Promise<string> {
     headers: { Authorization: `Bearer ${process.env.OLLAMA_API_KEY}` },
   });
   const response = await ollama.chat({
-    model: "llama3.2-vision",
+    model: "gemma4:31b",
     stream: false,
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
