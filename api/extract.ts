@@ -1,7 +1,6 @@
 import { generateText, gateway } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { Ollama } from "ollama";
 import { OAuth2Client } from "google-auth-library";
 import formidable from "formidable";
 import fs from "fs";
@@ -145,19 +144,25 @@ function computeReviewRequired(
 // ── Ollama Cloud ─────────────────────────────────────────────────────────────
 
 async function ollamaCloudGenerate(imageBytes: Buffer): Promise<string> {
-  const ollama = new Ollama({
-    host: "https://ollama.com",
-    headers: { Authorization: `Bearer ${process.env.OLLAMA_API_KEY}` },
+  const resp = await fetch("https://ollama.com/api/chat", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${process.env.OLLAMA_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: "gemma4:31b",
+      stream: false,
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: "Extract the data from this bank deposit screenshot.", images: [imageBytes.toString("base64")] },
+      ],
+    }),
+    signal: AbortSignal.timeout(120000),
   });
-  const response = await ollama.chat({
-    model: "gemma4:31b",
-    stream: false,
-    messages: [
-      { role: "system", content: SYSTEM_PROMPT },
-      { role: "user", content: "Extract the data from this bank deposit screenshot.", images: [imageBytes.toString("base64")] },
-    ],
-  });
-  return response.message.content;
+  if (!resp.ok) throw new Error(`Ollama Cloud ${resp.status}: ${await resp.text()}`);
+  const data = await resp.json() as { message?: { content?: string } };
+  return data.message?.content ?? "";
 }
 
 // ── Single-provider extraction ────────────────────────────────────────────────
