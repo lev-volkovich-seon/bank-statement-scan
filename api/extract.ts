@@ -1,6 +1,7 @@
 import { generateText, gateway } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createOpenAI } from "@ai-sdk/openai";
 import { OAuth2Client } from "google-auth-library";
 import formidable from "formidable";
 import fs from "fs";
@@ -48,7 +49,11 @@ function getModel(provider: string) {
     case "mistral":
       return gateway("mistral/pixtral-large-latest");
     case "llama":
-      return gateway("meta/llama-3.2-11b-vision-instruct");
+      return createOpenAI({
+        apiKey: process.env.LLAMA_API_KEY,
+        baseURL: "https://api.scaleway.ai/v1",
+        compatibility: "compatible",
+      })("llama-3.2-11b-vision-instruct");
     default:
       return createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY })("claude-sonnet-4-6");
   }
