@@ -225,19 +225,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return rfc7807(res, 401, "Unauthorized", "Missing Authorization header.", instance);
 
   const idToken = auth.slice(7).trim();
-  const testKey = process.env.TEST_API_KEY;
-  if (!testKey || idToken !== testKey) {
-    try {
-      const ticket = await authClient.verifyIdToken({
-        idToken,
-        audience: GOOGLE_CLIENT_ID,
-      });
-      const email = ticket.getPayload()?.email || "";
-      if (!email.endsWith(ALLOWED_DOMAIN))
-        return rfc7807(res, 403, "Forbidden", `Access restricted to ${ALLOWED_DOMAIN} accounts.`, instance);
-    } catch {
-      return rfc7807(res, 401, "Unauthorized", "Invalid or expired Google ID token.", instance);
-    }
+  try {
+    const ticket = await authClient.verifyIdToken({
+      idToken,
+      audience: GOOGLE_CLIENT_ID,
+    });
+    const email = ticket.getPayload()?.email || "";
+    if (!email.endsWith(ALLOWED_DOMAIN))
+      return rfc7807(res, 403, "Forbidden", `Access restricted to ${ALLOWED_DOMAIN} accounts.`, instance);
+  } catch {
+    return rfc7807(res, 401, "Unauthorized", "Invalid or expired Google ID token.", instance);
   }
 
   // ── Parse multipart form ──
