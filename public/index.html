@@ -446,12 +446,22 @@
     if (window.google) google.accounts.id.disableAutoSelect();
   }
 
+  function tokenExpired(token) {
+    try {
+      const { exp } = decodeJwt(token);
+      return Date.now() / 1000 >= exp - 30;
+    } catch { return true; }
+  }
+
   window.addEventListener('DOMContentLoaded', () => {
     const saved = localStorage.getItem('seon_id_token');
     const user = localStorage.getItem('seon_user');
-    if (saved && user) {
+    if (saved && user && !tokenExpired(saved)) {
       idToken = saved;
       showApp(JSON.parse(user));
+    } else {
+      localStorage.removeItem('seon_id_token');
+      localStorage.removeItem('seon_user');
     }
   });
 
@@ -522,11 +532,13 @@
     if (ref) form.append('session_reference', ref);
 
     try {
+      if (tokenExpired(idToken)) { signOut(); return; }
       const res = await fetch(`/api/extract?provider=${provider}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${idToken}` },
         body: form,
       });
+      if (res.status === 401) { signOut(); return; }
       const data = await res.json();
       if (provider === 'all') {
         renderAllResults(data);
