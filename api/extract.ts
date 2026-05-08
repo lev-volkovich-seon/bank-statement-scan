@@ -48,7 +48,7 @@ function getModel(provider: string) {
     case "mistral":
       return gateway("mistral/pixtral-large-latest");
     case "llama":
-      return gateway("groq/llama-3.2-11b-vision-preview");
+      return gateway("meta/llama-3.2-11b-vision-instruct");
     default:
       return createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY })("claude-sonnet-4-6");
   }
