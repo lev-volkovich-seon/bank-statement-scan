@@ -8,8 +8,8 @@
     "skipLibCheck": true,
     "moduleResolution": "node",
     "resolveJsonModule": true,
-    "outDir": ".vercel/output"
+    "outDir": "dist"
   },
-  "include": ["api/**/*"],
+  "include": ["api/**/*", "server.ts"],
   "exclude": ["node_modules"]
 }

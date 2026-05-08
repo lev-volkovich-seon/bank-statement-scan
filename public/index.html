@@ -210,7 +210,8 @@
     }
     .provider-col-header .provider-name.claude { color: #c084fc; }
     .provider-col-header .provider-name.gemini { color: #4ade80; }
-    .provider-col-header .provider-name.mistral { color: #60a5fa; }
+    .provider-col-header .provider-name.mistral { color: #f97316; }
+    .provider-col-header .provider-name.llama { color: #a3e635; }
     .provider-col-header .timing {
       font-size: .72rem; color: var(--muted); font-variant-numeric: tabular-nums;
     }
@@ -227,7 +228,8 @@
     .timing-fill { height: 100%; border-radius: 3px; transition: width .6s ease; }
     .timing-fill.claude { background: #c084fc; }
     .timing-fill.gemini { background: #4ade80; }
-    .timing-fill.mistral { background: #60a5fa; }
+    .timing-fill.mistral { background: #f97316; }
+    .timing-fill.llama { background: #a3e635; }
     .timing-ms { font-size: .75rem; color: var(--text); margin-top: 3px; font-variant-numeric: tabular-nums; }
 
     .status-badge {
@@ -344,6 +346,7 @@
         <button id="btn-claude" class="active" onclick="setProvider('claude')">Claude</button>
         <button id="btn-gemini" onclick="setProvider('gemini')">Gemini</button>
         <button id="btn-mistral" onclick="setProvider('mistral')">Mistral</button>
+        <button id="btn-llama" onclick="setProvider('llama')">Llama</button>
         <button id="btn-all" class="all-btn" onclick="setProvider('all')">All ⚡</button>
       </div>
 
@@ -455,7 +458,7 @@
   // ── Provider ──────────────────────────────────────────
   function setProvider(p) {
     provider = p;
-    ['claude','gemini','mistral','all'].forEach(id => {
+    ['claude','gemini','mistral','llama','all'].forEach(id => {
       document.getElementById('btn-' + id).classList.toggle('active', id === p);
     });
     const btn = document.getElementById('extract-btn');
@@ -659,8 +662,8 @@
     el.style.display = 'block';
 
     const results = data.results || {};
-    const providers = ['claude', 'gemini', 'mistral'];
-    const labels = { claude: 'Claude', gemini: 'Gemini', mistral: 'Mistral' };
+    const providers = ['claude', 'gemini', 'mistral', 'llama'];
+    const labels = { claude: 'Claude', gemini: 'Gemini', mistral: 'Mistral', llama: 'Llama 3.2' };
 
     // timing comparison
     const times = providers.map(p => (results[p]?.metadata?.processing_time_ms) || 0);

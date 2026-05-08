@@ -1,6 +1,7 @@
 import { generateText, gateway } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createOpenAI } from "@ai-sdk/openai";
 import { OAuth2Client } from "google-auth-library";
 import formidable from "formidable";
 import fs from "fs";
@@ -14,7 +15,7 @@ const GOOGLE_CLIENT_ID =
   "339298080830-o4su9baqe0i5m4s7mg6hu4ofnceklm0r.apps.googleusercontent.com";
 const ALLOWED_DOMAIN = "@seon.io";
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
-const PROVIDERS = ["claude", "gemini", "mistral"];
+const PROVIDERS = ["claude", "gemini", "mistral", "llama"];
 
 const SYSTEM_PROMPT = fs.readFileSync(
   path.join(process.cwd(), "prompts/v1_0_0.txt"),
@@ -47,6 +48,11 @@ function getModel(provider: string) {
       return createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_API_KEY })("gemini-2.5-flash");
     case "mistral":
       return gateway("mistral/pixtral-large-latest");
+    case "llama":
+      return createOpenAI({
+        apiKey: "ollama",
+        baseURL: process.env.OLLAMA_BASE_URL || "http://localhost:11434/v1",
+      })("llama3.2-vision");
     default:
       return createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY })("claude-sonnet-4-6");
   }
