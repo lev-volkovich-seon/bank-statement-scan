@@ -52,6 +52,7 @@ function getModel(provider: string) {
       return createOpenAI({
         apiKey: "ollama",
         baseURL: process.env.OLLAMA_BASE_URL || "http://localhost:11434/v1",
+        compatibility: "compatible",
       })("llama3.2-vision");
     default:
       return createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY })("claude-sonnet-4-6");
