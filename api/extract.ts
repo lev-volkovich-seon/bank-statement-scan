@@ -1,7 +1,6 @@
 import { generateText, gateway } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { createOpenAI } from "@ai-sdk/openai";
 import { OAuth2Client } from "google-auth-library";
 import formidable from "formidable";
 import fs from "fs";
@@ -49,11 +48,7 @@ function getModel(provider: string) {
     case "mistral":
       return gateway("mistral/pixtral-large-latest");
     case "llama":
-      return createOpenAI({
-        apiKey: "ollama",
-        baseURL: process.env.OLLAMA_BASE_URL || "http://localhost:11434/v1",
-        compatibility: "compatible",
-      })("llama3.2-vision");
+      return null as any; // handled separately via ollama native API
     default:
       return createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY })("claude-sonnet-4-6");
   }
@@ -146,6 +141,29 @@ function computeReviewRequired(
   return false;
 }
 
+// ── Ollama native call ────────────────────────────────────────────────────────
+
+async function ollamaGenerate(imageBytes: Buffer): Promise<string> {
+  const base64 = imageBytes.toString("base64");
+  const ollamaBase = (process.env.OLLAMA_BASE_URL || "http://localhost:11434").replace(/\/v1\/?$/, "");
+  const resp = await fetch(`${ollamaBase}/api/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "llama3.2-vision",
+      stream: false,
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: "Extract the data from this bank deposit screenshot.", images: [base64] },
+      ],
+    }),
+    signal: AbortSignal.timeout(120000),
+  });
+  if (!resp.ok) throw new Error(`Ollama ${resp.status}: ${await resp.text()}`);
+  const data = await resp.json() as { message?: { content?: string } };
+  return data.message?.content ?? "";
+}
+
 // ── Single-provider extraction ────────────────────────────────────────────────
 
 async function extractSingle(
@@ -157,20 +175,22 @@ async function extractSingle(
 ): Promise<Record<string, unknown>> {
   const startMs = Date.now();
 
-  const { text } = await generateText({
-    model: getModel(provider),
-    system: SYSTEM_PROMPT,
-    messages: [
-      {
-        role: "user",
-        content: [
-          { type: "image", image: imageBytes },
-          { type: "text", text: "Extract the data from this bank deposit screenshot." },
+  const text = provider === "llama"
+    ? await ollamaGenerate(imageBytes)
+    : await generateText({
+        model: getModel(provider),
+        system: SYSTEM_PROMPT,
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "image", image: imageBytes },
+              { type: "text", text: "Extract the data from this bank deposit screenshot." },
+            ],
+          },
         ],
-      },
-    ],
-    maxOutputTokens: 4096,
-  });
+        maxOutputTokens: 4096,
+      }).then((r) => r.text);
 
   const processingTimeMs = Date.now() - startMs;
   const modelResponse = parseJson(text);
